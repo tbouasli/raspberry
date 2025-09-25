@@ -1,8 +1,20 @@
+- name: Create DDNS directory
+  ansible.builtin.file:
+    path: /ddns
+    state: directory
+    mode: '0755'
+
+- name: Copy DDNS .env
+  ansible.builtin.copy:
+    src: ../services/ddns/.env
+    dest: /ddns/.env
+    mode: '0644'
+
 - name: Pull docker-compose.yaml from github
   ansible.builtin.get_url:
-    url: https://raw.githubusercontent.com/tbouasli/raspberry/master/docker-compose.yaml
+    url: https://raw.githubusercontent.com/tbouasli/raspberry/refs/heads/master/docker-compose.yml
     dest: /etc/docker-compose.yaml
     mode: '0644'
 
 - name: Deploy the services
-  ansible.builtin.command: docker-compose -f /etc/docker-compose.yaml up -d
+  ansible.builtin.command: docker compose -f /etc/docker-compose.yaml up -d

@@ -18,7 +18,7 @@
 
 - name: Install Docker using convenience script
   when: docker_installed.rc != 0
-  ansible.builtin.script: /tmp/get-docker.sh
+  ansible.builtin.shell: /tmp/get-docker.sh
   args:
     creates: /usr/bin/docker
 
