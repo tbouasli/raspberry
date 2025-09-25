@@ -20,6 +20,8 @@ services:
       - /minecraft/backup:/app/backup
     networks:
       - minecraft-network
+    expose:
+      - "25565"
   nginx:
     image: thomasbouasli/nginx:latest
     container_name: nginx
