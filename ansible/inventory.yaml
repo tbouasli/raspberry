@@ -1,0 +1,10 @@
+all:
+  children:
+    minecraft:
+      hosts:
+        master-node:
+          ansible_host: 192.168.15.100
+      vars:
+        ansible_user: "{{ ssh_user }}"
+        ansible_ssh_pass: "{{ ssh_password }}"
+        ansible_become_pass: "{{ sudo_password }}"

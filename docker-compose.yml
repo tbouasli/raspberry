@@ -1,0 +1,43 @@
+services:
+  ddns:
+    image: thomasbouasli/noip-duc:latest
+    container_name: ddns
+    restart: unless-stopped
+    env_file:
+      - /ddns/.env
+    command: ["noip-duc"]
+    networks:
+      - minecraft-network
+
+  minecraft:
+    image: thomasbouasli/minecraft:latest
+    container_name: minecraft
+    restart: unless-stopped
+    environment:
+      - EULA=true
+    volumes:
+      - /minecraft/server:/app/server
+      - /minecraft/backup:/app/backup
+    networks:
+      - minecraft-network
+  nginx:
+    image: thomasbouasli/nginx:latest
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "25565:25565"
+    depends_on:
+      - minecraft
+    networks:
+      - minecraft-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  minecraft-network:
+    driver: bridge

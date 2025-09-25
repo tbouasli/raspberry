@@ -1,0 +1,79 @@
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Check if Docker is already installed
+  ansible.builtin.command: which docker
+  register: docker_installed
+  failed_when: false
+  changed_when: false
+
+- name: Download Docker installation script
+  when: docker_installed.rc != 0
+  ansible.builtin.get_url:
+    url: https://get.docker.com
+    dest: /tmp/get-docker.sh
+    mode: '0755'
+
+- name: Install Docker using convenience script
+  when: docker_installed.rc != 0
+  ansible.builtin.script: /tmp/get-docker.sh
+  args:
+    creates: /usr/bin/docker
+
+- name: Clean up Docker installation script
+  when: docker_installed.rc != 0
+  ansible.builtin.file:
+    path: /tmp/get-docker.sh
+    state: absent
+
+- name: Add user to docker group
+  when: docker_installed.rc != 0
+  ansible.builtin.user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: true
+  become: true
+
+- name: Set Docker socket permissions
+  when: docker_installed.rc != 0
+  ansible.builtin.file:
+    path: /var/run/docker.sock
+    owner: root
+    group: docker
+    mode: '0660'
+  become: true
+
+- name: Reboot system
+  when: docker_installed.rc != 0
+  ansible.builtin.reboot:
+    reboot_timeout: 300
+    test_command: uptime
+
+- name: Check Docker status
+  ansible.builtin.command: systemctl status docker
+  register: docker_status
+  changed_when: true
+  failed_when: false
+
+- name: Enable and start Docker
+  when: docker_installed.rc != 0
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+  become: true
+
+- name: Check Docker status after start
+  when: docker_installed.rc != 0
+  ansible.builtin.command: systemctl status docker
+  register: docker_status_after
+  changed_when: true
+  failed_when: false
+
+- name: Test Docker
+  ansible.builtin.command: docker ps
+  when: docker_installed.rc != 0
+  changed_when: true
+  failed_when: false

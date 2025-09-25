@@ -1,0 +1,22 @@
+---
+- name: Run existing tasks
+  hosts: minecraft
+  become: true
+  vars_prompt:
+    - name: ssh_user
+      prompt: "Enter SSH username"
+      default: "raspberry"
+      private: false
+    - name: ssh_password
+      prompt: "Enter SSH password"
+      private: true
+    - name: sudo_password
+      prompt: "Enter sudo password"
+      private: true
+
+  tasks:
+    - name: Include Docker installation tasks
+      ansible.builtin.include_tasks: tasks/docker.yaml
+
+    - name: Include install tasks
+      ansible.builtin.include_tasks: tasks/install.yaml

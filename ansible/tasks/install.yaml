@@ -1,0 +1,8 @@
+- name: Pull docker-compose.yaml from github
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/tbouasli/raspberry/master/docker-compose.yaml
+    dest: /etc/docker-compose.yaml
+    mode: '0644'
+
+- name: Deploy the services
+  ansible.builtin.command: docker-compose -f /etc/docker-compose.yaml up -d
