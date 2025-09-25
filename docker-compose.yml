@@ -22,15 +22,46 @@ services:
       - minecraft-network
     expose:
       - "25565"
+
+  bluemap:
+    image: ghcr.io/bluemap-minecraft/bluemap:latest
+    container_name: bluemap
+    restart: unless-stopped
+    volumes:
+      - /minecraft/server/config:/app/config
+      - /minecraft/server/world:/app/world
+      - /minecraft/server/data:/app/data
+      - /minecraft/server/web:/app/web
+    networks:
+      - minecraft-network
+    expose:
+      - "8100"
+    depends_on:
+      - minecraft
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    volumes:
+      - /minecraft/ssl:/etc/letsencrypt
+      - /minecraft/webroot:/var/www/certbot
+    command: certonly --webroot --webroot-path=/var/www/certbot --email thomas.bouasli@gmail.com --agree-tos --no-eff-email -d minecraft.bouasli.com
+    depends_on:
+      - nginx
   nginx:
     image: thomasbouasli/nginx:latest
     container_name: nginx
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
       - "25565:25565"
+    volumes:
+      - /minecraft/ssl:/etc/nginx/ssl:ro
+      - /minecraft/webroot:/var/www/certbot
     depends_on:
       - minecraft
+      - bluemap
     networks:
       - minecraft-network
     healthcheck:
