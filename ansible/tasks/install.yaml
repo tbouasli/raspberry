@@ -16,5 +16,65 @@
     dest: /etc/docker-compose.yaml
     mode: '0644'
 
-- name: Deploy the services
+- name: Create SSL directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /minecraft/ssl
+    - /minecraft/webroot
+
+- name: Deploy the services (HTTP only first)
   ansible.builtin.command: docker compose -f /etc/docker-compose.yaml up -d
+
+- name: Wait for nginx to be ready
+  ansible.builtin.wait_for:
+    port: 80
+    host: localhost
+    delay: 5
+    timeout: 60
+
+- name: Wait for bluemap to be ready
+  ansible.builtin.wait_for:
+    port: 8100
+    host: bluemap
+    delay: 10
+    timeout: 120
+
+- name: Get SSL certificate with certbot
+  ansible.builtin.docker_container:
+    name: certbot-ssl
+    image: certbot/certbot:latest
+    volumes:
+      - /minecraft/ssl:/etc/letsencrypt
+      - /minecraft/webroot:/var/www/certbot
+    command: certonly --webroot --webroot-path=/var/www/certbot --email thomas.bouasli@gmail.com --agree-tos --no-eff-email -d minecraft.bouasli.com
+    state: started
+    remove: true
+  register: certbot_result
+  failed_when: certbot_result.rc != 0
+
+- name: Check if SSL certificates exist
+  ansible.builtin.stat:
+    path: /minecraft/ssl/live/minecraft.bouasli.com/fullchain.pem
+  register: ssl_cert_exists
+
+- name: Remove commented SSL configuration
+  ansible.builtin.replace:
+    path: /etc/nginx/nginx.conf
+    regexp: '^    # .*'
+    replace: ''
+  when: ssl_cert_exists.stat.exists
+
+- name: Reload nginx to enable SSL
+  ansible.builtin.command: docker compose -f /etc/docker-compose.yaml exec nginx nginx -s reload
+  when: ssl_cert_exists.stat.exists
+
+- name: Set up certbot renewal cron job
+  ansible.builtin.cron:
+    name: "SSL Certificate Renewal"
+    job: "docker run --rm -v /minecraft/ssl:/etc/letsencrypt -v /minecraft/webroot:/var/www/certbot certbot/certbot renew --webroot --webroot-path=/var/www/certbot && docker compose -f /etc/docker-compose.yaml exec nginx nginx -s reload"
+    minute: "0"
+    hour: "2"
+    user: root
