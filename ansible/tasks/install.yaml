@@ -10,114 +10,31 @@
     dest: /ddns/.env
     mode: '0644'
 
-- name: Pull docker-compose.yaml from github
-  ansible.builtin.get_url:
-    url: https://raw.githubusercontent.com/tbouasli/raspberry/refs/heads/master/docker-compose.yml
-    dest: /etc/docker-compose.yaml
-    mode: '0644'
+- name: Check if repo exists
+  ansible.builtin.command: ls -la /repository
+  register: repo_exists
+  failed_when: false
+  changed_when: false
+
+- name: Clone repo if not exists
+  ansible.builtin.git:
+    repo: https://github.com/tbouasli/raspberry.git
+    dest: /repository
+    version: master
+    force: true
+    clone: true
+    recursive: true
+
+- name: Stop and remove existing containers
+  ansible.builtin.command: docker compose -f /repository/docker-compose.yml down --remove-orphans
+  failed_when: false
+
+- name: Force remove any remaining containers
+  ansible.builtin.command: docker rm -f ddns minecraft nginx
+  failed_when: false
 
 - name: Pull docker images
-  ansible.builtin.command: docker compose -f /etc/docker-compose.yaml pull
+  ansible.builtin.command: docker compose -f /repository/docker-compose.yml pull
 
-- name: Create SSL directories
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: directory
-    mode: '0755'
-  loop:
-    - /minecraft/ssl
-    - /minecraft/webroot
-
-- name: Deploy the services (HTTP only first)
-  ansible.builtin.command: docker compose -f /etc/docker-compose.yaml up -d
-
-- name: Wait for services to start
-  ansible.builtin.pause:
-    seconds: 30
-
-- name: Check if nginx is running
-  ansible.builtin.command: docker compose -f /etc/docker-compose.yaml ps nginx
-  register: nginx_status
-  failed_when: false
-
-- name: Debug nginx status
-  ansible.builtin.debug:
-    var: nginx_status.stdout
-
-- name: Check if bluemap is running
-  ansible.builtin.command: docker compose -f /etc/docker-compose.yaml ps bluemap
-  register: bluemap_status
-  failed_when: false
-
-- name: Debug bluemap status
-  ansible.builtin.debug:
-    var: bluemap_status.stdout
-
-- name: Check all services status
-  ansible.builtin.command: docker compose -f /etc/docker-compose.yaml ps
-  register: all_services
-  failed_when: false
-
-- name: Debug all services
-  ansible.builtin.debug:
-    var: all_services.stdout
-
-- name: Wait for nginx to be ready
-  ansible.builtin.wait_for:
-    port: 80
-    host: localhost
-    delay: 5
-    timeout: 60
-  when: "'Up' in nginx_status.stdout"
-
-- name: Wait for bluemap to be ready
-  ansible.builtin.wait_for:
-    port: 8100
-    host: bluemap
-    delay: 10
-    timeout: 120
-  when: "'Up' in bluemap_status.stdout"
-
-- name: Get SSL certificate with certbot
-  ansible.builtin.command: >
-    docker run --rm 
-    -v /minecraft/ssl:/etc/letsencrypt 
-    -v /minecraft/webroot:/var/www/certbot 
-    certbot/certbot:latest 
-    certonly --webroot --webroot-path=/var/www/certbot 
-    --email thomas.bouasli@gmail.com --agree-tos --no-eff-email 
-    -d minecraft.bouasli.com
-  register: certbot_result
-  failed_when: false
-
-- name: Debug certbot result
-  ansible.builtin.debug:
-    var: certbot_result
-
-- name: Check if certbot succeeded
-  ansible.builtin.stat:
-    path: /minecraft/ssl/live/minecraft.bouasli.com/fullchain.pem
-  register: ssl_cert_exists
-
-- name: SSL certificate status
-  ansible.builtin.debug:
-    msg: "SSL certificate {{ 'exists' if ssl_cert_exists.stat.exists else 'not found - will continue with HTTP only' }}"
-
-- name: Remove commented SSL configuration
-  ansible.builtin.replace:
-    path: /etc/nginx/nginx.conf
-    regexp: '^    # .*'
-    replace: ''
-  when: ssl_cert_exists.stat.exists
-
-- name: Reload nginx to enable SSL
-  ansible.builtin.command: docker compose -f /etc/docker-compose.yaml exec nginx nginx -s reload
-  when: ssl_cert_exists.stat.exists
-
-- name: Set up certbot renewal cron job
-  ansible.builtin.cron:
-    name: "SSL Certificate Renewal"
-    job: "docker run --rm -v /minecraft/ssl:/etc/letsencrypt -v /minecraft/webroot:/var/www/certbot certbot/certbot renew --webroot --webroot-path=/var/www/certbot && docker compose -f /etc/docker-compose.yaml exec nginx nginx -s reload"
-    minute: "0"
-    hour: "2"
-    user: root
+- name: Start services
+  ansible.builtin.command: docker compose -f /repository/docker-compose.yml up -d

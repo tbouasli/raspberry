@@ -8,53 +8,37 @@ services:
     command: ["noip-duc"]
     networks:
       - minecraft-network
-
   minecraft:
-    image: thomasbouasli/minecraft:latest
-    container_name: minecraft
+    image: itzg/minecraft-server
+    tty: true
+    stdin_open: true
     restart: unless-stopped
+    ports:
+      - "25565:25565"
     environment:
-      - EULA=true
+      EULA: "TRUE"
+      TYPE: "PAPER"
+      VERSION: "1.21.8"
+      DIFFICULTY: "normal"
+      ENABLE_COMMAND_BLOCK: "TRUE"
+      MEMORY: "6G"
+      USE_MEOWICE_FLAGS: "TRUE"
+      ENABLE_AUTOPAUSE: "TRUE"
+      RESOURCE_PACK: "https://mediafilez.forgecdn.net/files/6900/613/Excalibur_V1.21.8.zip"
+      PLUGINS: |
+        https://hangarcdn.papermc.io/plugins/pop4959/Chunky/versions/1.4.40/PAPER/Chunky-Bukkit-1.4.40.jar
     volumes:
-      - /minecraft/server:/app/server
-      - /minecraft/backup:/app/backup
-    networks:
-      - minecraft-network
-    expose:
-      - "25565"
-
-  bluemap:
-    image: ghcr.io/bluemap-minecraft/bluemap:latest
-    container_name: bluemap
-    restart: unless-stopped
-    volumes:
-      - /minecraft/server/config:/app/config
-      - /minecraft/server/world:/app/world
-      - /minecraft/server/world_nether:/app/world_nether
-      - /minecraft/server/world_the_end:/app/world_the_end
-      - /minecraft/server/data:/app/data
-      - /minecraft/server/web:/app/web
-    networks:
-      - minecraft-network
-    expose:
-      - "8100"
-    command: ["-r", "-u", "-w"]
-    depends_on:
-      - minecraft
+      - ./minecraft/server:/data
+      
   nginx:
     image: thomasbouasli/nginx:latest
     container_name: nginx
     restart: unless-stopped
     ports:
       - "80:80"
-      - "443:443"
       - "25565:25565"
-    volumes:
-      - /minecraft/ssl:/etc/nginx/ssl:ro
-      - /minecraft/webroot:/var/www/certbot
     depends_on:
       - minecraft
-      - bluemap
     networks:
       - minecraft-network
     healthcheck:

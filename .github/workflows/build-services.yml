@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       services:
-        description: 'Comma-separated list of services to build (ddns,minecraft,nginx) or "all"'
+        description: 'Comma-separated list of services to build (ddns,nginx) or "all"'
         required: false
         default: 'all'
         type: string
@@ -31,8 +31,6 @@ jobs:
         service:
           - name: ddns
             image: thomasbouasli/noip-duc
-          - name: minecraft
-            image: thomasbouasli/minecraft
           - name: nginx
             image: thomasbouasli/nginx
 
