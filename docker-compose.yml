@@ -29,7 +29,7 @@ services:
     restart: unless-stopped
     volumes:
       - /minecraft/server:/app/server
-      - /minecraft/bluemap/config:/app/config
+      - /minecraft/bluemap/config/BlueMap:/app/config
       - /minecraft/bluemap/data:/app/data
       - /minecraft/bluemap/web:/app/web
     networks:
