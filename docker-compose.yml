@@ -28,10 +28,10 @@ services:
     container_name: bluemap
     restart: unless-stopped
     volumes:
-      - /minecraft/server/config:/app/config
-      - /minecraft/server/world:/app/world
-      - /minecraft/server/data:/app/data
-      - /minecraft/server/web:/app/web
+      - /minecraft/server:/app/server
+      - /minecraft/bluemap/config:/app/config
+      - /minecraft/bluemap/data:/app/data
+      - /minecraft/bluemap/web:/app/web
     networks:
       - minecraft-network
     expose:
