@@ -9,13 +9,6 @@ on:
     branches: [ main, master ]
     paths:
       - 'services/**'
-  workflow_dispatch:
-    inputs:
-      services:
-        description: 'Comma-separated list of services to build (ddns,nginx) or "all"'
-        required: false
-        default: 'all'
-        type: string
 
 env:
   REGISTRY: docker.io
@@ -31,8 +24,6 @@ jobs:
         service:
           - name: ddns
             image: thomasbouasli/noip-duc
-          - name: nginx
-            image: thomasbouasli/nginx
 
     steps:
     - name: Checkout repository

@@ -13,8 +13,6 @@ services:
     tty: true
     stdin_open: true
     restart: unless-stopped
-    ports:
-      - "25565:25565"
     environment:
       EULA: "TRUE"
       TYPE: "PAPER"
@@ -29,24 +27,6 @@ services:
         https://hangarcdn.papermc.io/plugins/pop4959/Chunky/versions/1.4.40/PAPER/Chunky-Bukkit-1.4.40.jar
     volumes:
       - ./minecraft/server:/data
-      
-  nginx:
-    image: thomasbouasli/nginx:latest
-    container_name: nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "25565:25565"
-    depends_on:
-      - minecraft
-    networks:
-      - minecraft-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
 
 networks:
   minecraft-network:
