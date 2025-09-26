@@ -36,6 +36,7 @@ services:
       - minecraft-network
     expose:
       - "8100"
+    command: ["-r", "-u", "-w"]
     depends_on:
       - minecraft
   nginx:

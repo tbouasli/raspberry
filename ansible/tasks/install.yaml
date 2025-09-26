@@ -16,6 +16,9 @@
     dest: /etc/docker-compose.yaml
     mode: '0644'
 
+- name: Pull docker images
+  ansible.builtin.command: docker compose -f /etc/docker-compose.yaml pull
+
 - name: Create SSL directories
   ansible.builtin.file:
     path: "{{ item }}"
@@ -28,12 +31,44 @@
 - name: Deploy the services (HTTP only first)
   ansible.builtin.command: docker compose -f /etc/docker-compose.yaml up -d
 
+- name: Wait for services to start
+  ansible.builtin.pause:
+    seconds: 30
+
+- name: Check if nginx is running
+  ansible.builtin.command: docker compose -f /etc/docker-compose.yaml ps nginx
+  register: nginx_status
+  failed_when: false
+
+- name: Debug nginx status
+  ansible.builtin.debug:
+    var: nginx_status.stdout
+
+- name: Check if bluemap is running
+  ansible.builtin.command: docker compose -f /etc/docker-compose.yaml ps bluemap
+  register: bluemap_status
+  failed_when: false
+
+- name: Debug bluemap status
+  ansible.builtin.debug:
+    var: bluemap_status.stdout
+
+- name: Check all services status
+  ansible.builtin.command: docker compose -f /etc/docker-compose.yaml ps
+  register: all_services
+  failed_when: false
+
+- name: Debug all services
+  ansible.builtin.debug:
+    var: all_services.stdout
+
 - name: Wait for nginx to be ready
   ansible.builtin.wait_for:
     port: 80
     host: localhost
     delay: 5
     timeout: 60
+  when: "'Up' in nginx_status.stdout"
 
 - name: Wait for bluemap to be ready
   ansible.builtin.wait_for:
@@ -41,24 +76,32 @@
     host: bluemap
     delay: 10
     timeout: 120
+  when: "'Up' in bluemap_status.stdout"
 
 - name: Get SSL certificate with certbot
-  ansible.builtin.docker_container:
-    name: certbot-ssl
-    image: certbot/certbot:latest
-    volumes:
-      - /minecraft/ssl:/etc/letsencrypt
-      - /minecraft/webroot:/var/www/certbot
-    command: certonly --webroot --webroot-path=/var/www/certbot --email thomas.bouasli@gmail.com --agree-tos --no-eff-email -d minecraft.bouasli.com
-    state: started
-    remove: true
+  ansible.builtin.command: >
+    docker run --rm 
+    -v /minecraft/ssl:/etc/letsencrypt 
+    -v /minecraft/webroot:/var/www/certbot 
+    certbot/certbot:latest 
+    certonly --webroot --webroot-path=/var/www/certbot 
+    --email thomas.bouasli@gmail.com --agree-tos --no-eff-email 
+    -d minecraft.bouasli.com
   register: certbot_result
-  failed_when: certbot_result.rc != 0
+  failed_when: false
 
-- name: Check if SSL certificates exist
+- name: Debug certbot result
+  ansible.builtin.debug:
+    var: certbot_result
+
+- name: Check if certbot succeeded
   ansible.builtin.stat:
     path: /minecraft/ssl/live/minecraft.bouasli.com/fullchain.pem
   register: ssl_cert_exists
+
+- name: SSL certificate status
+  ansible.builtin.debug:
+    msg: "SSL certificate {{ 'exists' if ssl_cert_exists.stat.exists else 'not found - will continue with HTTP only' }}"
 
 - name: Remove commented SSL configuration
   ansible.builtin.replace:
