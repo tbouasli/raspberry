@@ -17,6 +17,9 @@ COPY ./scripts/cron-bkp-5m.sh /app/cron/cron-bkp-5m.sh
 COPY ./scripts/cron-bkp-1d.sh /app/cron/cron-bkp-1d.sh
 COPY ./scripts/cron-bkp-1w.sh /app/cron/cron-bkp-1w.sh
 
+# Copy plugins
+COPY ./plugins/ /app/config/plugins/
+
 RUN chmod +x /app/cron/cron-bkp-5m.sh
 RUN chmod +x /app/cron/cron-bkp-1d.sh
 RUN chmod +x /app/cron/cron-bkp-1w.sh
@@ -34,4 +37,6 @@ WORKDIR /app/server
 CMD cp /app/config/server.properties /app/server/server.properties && \
     cp /app/config/eula.txt /app/server/eula.txt && \
     cp /app/config/paper-1.21.8-60.jar /app/server/paper-1.21.8-60.jar && \
+    mkdir -p /app/server/plugins && \
+    cp /app/config/plugins/*.jar /app/server/plugins/ && \
     service cron start && java -jar /app/server/paper-1.21.8-60.jar --nogui
